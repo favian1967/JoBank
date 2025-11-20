@@ -19,7 +19,7 @@ public class UserController {
     }
 
 
-    @PostMapping("/add")
+    @PostMapping("/add") //automatic create account
     public Long addUser(
             @RequestBody User user
     ){

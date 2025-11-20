@@ -2,46 +2,39 @@ package com.company.jobank.Controllers;
 
 
 import com.company.jobank.Entities.Account;
-import com.company.jobank.Entities.User;
 import com.company.jobank.Repositories.AccountRepository;
-import com.company.jobank.Repositories.UserRepository;
+import com.company.jobank.Services.AccountService;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/account")
 public class AccountController {
 
-    private final AccountRepository accountRepository;
-    private final UserRepository userRepository;
 
-    public AccountController(AccountRepository accountRepository, UserRepository userRepository) {
+    private final AccountRepository accountRepository;
+    private final AccountService accountService;
+
+    public AccountController(AccountRepository accountRepository, AccountService accountService) {
         this.accountRepository = accountRepository;
-        this.userRepository = userRepository;
+        this.accountService = accountService;
     }
 
-    @GetMapping("/balance")
-    public Double checkBalance(
+    @GetMapping("/getBalance")
+    public Double getBalance(
             @RequestParam Long userId
     ) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));;
-        Account account = accountRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-        return account.getBalance();
+        return accountService.getBalance(userId);
     }
 
     @PutMapping("/deposit")
-    public String updateBalance(
+    public Double deposit(
             @RequestParam Long userId,
             @RequestParam Double amount
     ) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));;
-                Account account =  accountRepository.findByUserId(user.getId())
-                        .orElseThrow(() -> new RuntimeException("Account not found"));
-                account.setBalance(account.getBalance() + amount);
-                accountRepository.save(account);
-                return "Account updated successfully";
+//        Account account = accountService.deposit(userId, amount);
+//        return ResponseEntity.ok(account);
+        return accountService.deposit(userId, amount); //I like it)
     }
 
     @PutMapping("/withdraw")
@@ -49,16 +42,7 @@ public class AccountController {
             @RequestParam Long userId,
             @RequestParam Double amount
     ) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));;
-        Account account =  accountRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-        account.setBalance(account.getBalance() - amount);
-        if (account.getBalance() < 0) {
-            throw new RuntimeException("Insufficient balance");
-        }
-        accountRepository.save(account);
-        return "Account updated successfully";
+        return accountService.withdraw(userId, amount);
     }
 
 
@@ -67,27 +51,34 @@ public class AccountController {
             @RequestParam Long transferFrom,
             @RequestParam Long transferTo,
             @RequestParam Double amount
-    ){
-        User user = userRepository.findById(transferFrom)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        Account account =  accountRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-
-
-        if (account.getBalance() < amount) {
-            throw new RuntimeException("Insufficient balance");
-        }
-
-        account.setBalance(account.getBalance() - amount);
-        accountRepository.save(account);
-
-        User  user2 = userRepository.findById(transferTo)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-        Account account1 = accountRepository.findByUserId(user2.getId())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-
-        account1.setBalance(account1.getBalance() + amount);
-        accountRepository.save(account1);
-        return "Account transfer successfully";
+    ) {
+        return accountService.transfer(transferFrom, transferTo, amount);
     }
+
+    @GetMapping
+    public List<Account> getAllAccounts() {
+        return accountRepository.findAll();
+    }
+
+    @GetMapping("/id")
+    public Account getAccountById(@RequestParam Long accountId) {
+        return accountRepository.findById(accountId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+    }
+
+    @GetMapping("/byUser")
+    public Account getAccountByUserId(@RequestParam Long userId) {
+        return accountRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+    }
+
+
+    //delete only account
+    @DeleteMapping("/delete")
+    public String deleteAccount(@RequestParam Long accountId) {
+        accountRepository.deleteById(accountId);
+        return "Account deleted";
+    }
+
+
 }
