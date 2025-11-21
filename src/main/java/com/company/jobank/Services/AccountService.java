@@ -8,10 +8,9 @@ import com.company.jobank.Enums.TransactionType;
 import com.company.jobank.Repositories.AccountRepository;
 import com.company.jobank.Repositories.TransactionRepository;
 import com.company.jobank.Repositories.UserRepository;
+import com.company.jobank.exceptions.*;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
-
-import static com.company.jobank.Enums.TransactionType.DEPOSIT;
 
 @Service
 public class AccountService {
@@ -28,9 +27,9 @@ public class AccountService {
 
     public Double getBalance(Long userId) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));;
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
         Account account = accountRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new AccountNotFoundException("Account not found"));
         return account.getBalance();
     }
 
@@ -38,12 +37,12 @@ public class AccountService {
     @Transactional
     public Double deposit(Long userId, Double amount) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));;
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
         Account account =  accountRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new AccountNotFoundException("Account not found"));
         account.setBalance(account.getBalance() + amount);
 
-        createTransaction(amount, account, "dep",  TransactionType.DEPOSIT, null, account);
+        createTransaction(amount, "dep",  TransactionType.DEPOSIT, null, account);
 
         accountRepository.save(account);
         return account.getBalance();
@@ -53,15 +52,17 @@ public class AccountService {
     public String withdraw(Long userId, Double amount) {
 
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new RuntimeException("User not found"));;
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
         Account account =  accountRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new AccountNotFoundException("Account not found"));
         if (account.getBalance() < amount) {
-            throw new RuntimeException("Insufficient balance");
+            throw new InsufficientFundsException( "Insufficient funds. Current balance: " +
+                    account.getBalance() +
+                    ", required: " + amount);
         }
         account.setBalance(account.getBalance() - amount);
 
-        createTransaction(amount, account, "Withdraw",  TransactionType.WITHDRAW, account, null);
+        createTransaction(amount, "Withdraw",  TransactionType.WITHDRAW, account, null);
 
         accountRepository.save(account);
         return "Account updated successfully";
@@ -70,29 +71,31 @@ public class AccountService {
     @Transactional
     public String transfer(Long transferFrom, Long transferTo, Double amount) {
         User user = userRepository.findById(transferFrom)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
         Account account =  accountRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+                .orElseThrow(() -> new AccountNotFoundException("Account not found"));
 
 
         if (account.getBalance() < amount) {
-            throw new RuntimeException("Insufficient balance");
+            throw new InsufficientFundsException(
+                    "Insufficient funds. Current balance: " + account.getBalance() +
+                            ", required: " + amount
+            );
         }
         if (transferFrom.equals(transferTo)) {
-            throw new RuntimeException("Cannot transfer to the same account");
+            throw new InvalidTransferException("Cannot transfer to the same account");
         }
         account.setBalance(account.getBalance() - amount);
         accountRepository.save(account);
 
         User  user2 = userRepository.findById(transferTo)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+                .orElseThrow(() -> new UserNotFoundException("User with id " + transferTo + " not found"));
         Account account1 = accountRepository.findByUserId(user2.getId())
-                .orElseThrow(() -> new RuntimeException("Account not found"));
-
+                .orElseThrow(() -> new AccountNotFoundException("Account for user " + transferTo + " not found"));
         account1.setBalance(account1.getBalance() + amount);
 
 
-        createTransaction(amount, account, "transfer",  TransactionType.TRANSFER, account, account1);
+        createTransaction(amount, "transfer",  TransactionType.TRANSFER, account, account1);
 
 
         accountRepository.save(account1);
@@ -104,7 +107,7 @@ public class AccountService {
 
 
 
-    private void createTransaction(Double amount, Account account, String description, TransactionType type, Account fromAccount, Account toAccount) {
+    private void createTransaction(Double amount, String description, TransactionType type, Account fromAccount, Account toAccount) {
         Transaction transaction = new Transaction();
         transaction.setFromAccount(fromAccount);
         transaction.setToAccount(toAccount);
