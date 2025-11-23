@@ -1,6 +1,8 @@
 package com.company.jobank.Services;
 
 
+import com.company.jobank.Dtos.AccountDto;
+import com.company.jobank.Dtos.TransactionDto;
 import com.company.jobank.Entities.Account;
 import com.company.jobank.Entities.Transaction;
 import com.company.jobank.Entities.User;
@@ -118,4 +120,24 @@ public class AccountService {
         transactionRepository.save(transaction);
     }
 
+
+    public AccountDto convertToAccountDto(Account account) {
+        AccountDto accountDto = new AccountDto();
+        accountDto.setId(account.getId());
+        accountDto.setUserId(accountDto.getUserId());
+        accountDto.setUserFullName(account.getUser().getFirstName() + " " + account.getUser().getLastName());
+        accountDto.setBalance(account.getBalance());
+        return accountDto;
+    }
+    public TransactionDto convertToTransactionDTO(Transaction transaction) {
+        TransactionDto dto = new TransactionDto();
+        dto.setId(transaction.getId());
+        dto.setFromAccountId(transaction.getFromAccount() != null ? transaction.getFromAccount().getId() : null);
+        dto.setToAccountId(transaction.getToAccount() != null ? transaction.getToAccount().getId() : null);
+        dto.setType(transaction.getType());
+        dto.setAmount(transaction.getAmount());
+        dto.setDescription(transaction.getDescription());
+        dto.setTransactionDate(transaction.getTransactionDate());
+        return dto;
+    }
 }
