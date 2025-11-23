@@ -1,23 +1,29 @@
 package com.company.jobank.Controllers;
 
 
+import com.company.jobank.Dtos.AccountDto;
 import com.company.jobank.Entities.Account;
+import com.company.jobank.Mappers.AccountMapper;
 import com.company.jobank.Repositories.AccountRepository;
 import com.company.jobank.Services.AccountService;
+import com.company.jobank.exceptions.AccountNotFoundException;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/account")
+@RequestMapping("/accounts")
 public class AccountController {
 
 
     private final AccountRepository accountRepository;
     private final AccountService accountService;
+    private final AccountMapper accountMapper;
 
-    public AccountController(AccountRepository accountRepository, AccountService accountService) {
+    public AccountController(AccountRepository accountRepository, AccountService accountService, AccountMapper accountMapper) {
         this.accountRepository = accountRepository;
         this.accountService = accountService;
+        this.accountMapper = accountMapper;
     }
 
     @GetMapping("/getBalance")
@@ -56,20 +62,26 @@ public class AccountController {
     }
 
     @GetMapping
-    public List<Account> getAllAccounts() {
-        return accountRepository.findAll();
+    public List<AccountDto> getAllAccounts() {
+        return accountRepository.findAll()
+                .stream()
+                .map(accountMapper::toDTO)
+                .collect(Collectors.toList());
     }
 
     @GetMapping("/id")
-    public Account getAccountById(@RequestParam Long accountId) {
-        return accountRepository.findById(accountId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+    public AccountDto getAccountById(@RequestParam Long accountId) {
+        Account account = accountRepository.findById(accountId)
+                .orElseThrow(() -> new AccountNotFoundException("Account not found"));
+
+        return accountMapper.toDTO(account);
     }
 
     @GetMapping("/byUser")
-    public Account getAccountByUserId(@RequestParam Long userId) {
-        return accountRepository.findByUserId(userId)
-                .orElseThrow(() -> new RuntimeException("Account not found"));
+    public AccountDto getAccountByUserId(@RequestParam Long userId) {
+     Account account = accountRepository.findByUserId(userId)
+             .orElseThrow(() -> new AccountNotFoundException("Account not found"));
+        return accountMapper.toDTO(account);
     }
 
 
